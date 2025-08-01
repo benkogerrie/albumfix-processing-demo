@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AlbumFix Processing Experience</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .processing-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Header Section */
+        .header {
+            position: absolute;
+            top: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(20px);
+            padding: 20px 40px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .logo {
+            width: 60px;
+            height: 60px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin: 0 auto 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .title {
+            color: white;
+            font-size: 1.8rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .subtitle {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 1.1rem;
+            font-weight: 400;
+        }
+
+        /* Floating Photos */
+        .photo-container {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            top: 140px; /* Start below header */
+            bottom: 160px; /* Stop above status */
+        }
+
+        .floating-photo {
+            position: absolute;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            border: 3px solid rgba(255,255,255,0.9);
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            opacity: 0;
+            transition: all 0.5s ease;
+            overflow: hidden;
+        }
+
+        .floating-photo img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+
+        .floating-photo.visible {
+            opacity: 1;
+        }
+
+        .floating-photo.fadeout {
+            opacity: 0;
+            transform: scale(0.8);
+        }
+
+        /* Status Section */
+        .status-section {
+            position: absolute;
+            bottom: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(20px);
+            padding: 20px 40px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .status-message {
+            color: white;
+            font-size: 1.3rem;
+            margin-bottom: 12px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            opacity: 0.9;
+        }
+
+        .phase-indicator {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 1rem;
+            margin-bottom: 20px;
+        }
+
+        .pulse-dot {
+            width: 12px;
+            height: 12px;
+            background: white;
+            border-radius: 50%;
+            display: inline-block;
+            animation: pulse 2s ease-in-out infinite;
+            margin: 0 4px;
+        }
+
+        .pulse-dot:nth-child(2) { animation-delay: 0.3s; }
+        .pulse-dot:nth-child(3) { animation-delay: 0.6s; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.4; transform: scale(0.8); }
+            50% { opacity: 1; transform: scale(1.2); }
+        }
+
+        /* Completion State */
+        .completion-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 1s ease;
+            z-index: 200;
+        }
+
+        .completion-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .success-icon {
+            width: 120px;
+            height: 120px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 60px;
+            margin-bottom: 30px;
+            backdrop-filter: blur(10px);
+            border: 3px solid rgba(255, 255, 255, 0.5);
+            animation: successPulse 2s ease-in-out;
+        }
+
+        @keyframes successPulse {
+            0% { transform: scale(0); opacity: 0; }
+            50% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .completion-title {
+            color: white;
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 15px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            animation: slideUp 1s ease 0.5s both;
+        }
+
+        .completion-subtitle {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 1.3rem;
+            margin-bottom: 40px;
+            animation: slideUp 1s ease 0.7s both;
+        }
+
+        .completion-stats {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(20px);
+            border-radius: 16px;
+            padding: 30px 40px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            animation: slideUp 1s ease 0.9s both;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            color: white;
+            font-size: 1.1rem;
+        }
+
+        .stat-row:last-child {
+            margin-bottom: 0;
+            font-weight: 600;
+            font-size: 1.2rem;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .stat-label {
+            opacity: 0.9;
+        }
+
+        .stat-value {
+            font-weight: 600;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .continue-button {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            padding: 15px 30px;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+            margin-top: 30px;
+            animation: slideUp 1s ease 1.1s both;
+        }
+
+        .continue-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+        }
+
+        /* Sample Photos Data */
+        .sample-photos {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="processing-container">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo">📸</div>
+            <div class="title">AlbumFix</div>
+            <div class="subtitle">Organizing your memories</div>
+        </div>
+
+        <!-- Floating Photos Container -->
+        <div class="photo-container" id="photoContainer">
+            <!-- Photos will be dynamically added here -->
+        </div>
+
+        <!-- Status Section -->
+        <div class="status-section">
+            <div class="status-message" id="statusMessage">Extracting and analyzing your photos...</div>
+            <div class="phase-indicator" id="phaseIndicator">Phase 1: Date-based organization</div>
+            <div class="loading-dots">
+                <span class="pulse-dot"></span>
+                <span class="pulse-dot"></span>
+                <span class="pulse-dot"></span>
+            </div>
+        </div>
+
+        <!-- Completion Overlay -->
+        <div class="completion-overlay" id="completionOverlay">
+            <div class="success-icon">✨</div>
+            <div class="completion-title">Perfect!</div>
+            <div class="completion-subtitle">Your photos have been beautifully organized</div>
+            <div class="completion-stats">
+                <div class="stat-row">
+                    <span class="stat-label">Photos processed:</span>
+                    <span class="stat-value">2,347</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Dates recovered:</span>
+                    <span class="stat-value">2,156 (92%)</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">GPS locations added:</span>
+                    <span class="stat-value">1,834</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Processing time:</span>
+                    <span class="stat-value">1m 23s</span>
+                </div>
+            </div>
+            <button class="continue-button" onclick="viewResults()">View Organized Photos</button>
+        </div>
+    </div>
+
+    <!-- Sample Photo Emojis (representing real thumbnails) -->
+    <div class="sample-photos" style="display: none;">
+        <!-- Real photos are now loaded from images/ folder -->
+    </div>
+
+    <script>
+        // Real photo paths from GitHub
+        const photoUrls = [
+            'images/photo1.webp',
+            'images/photo2.webp', 
+            'images/photo3.webp',
+            'images/photo4.webp',
+            'images/photo5.webp',
+            'images/photo6.webp',
+            'images/photo7.webp',
+            'images/photo8.webp',
+            'images/photo9.webp',
+            'images/photo10.webp',
+            'images/photo11.webp',
+            'images/photo12.webp',
+            'images/photo13.webp',
+            'images/photo14.webp',
+            'images/photo15.webp',
+            'images/photo16.webp',
+            'images/photo17.webp',
+            'images/photo18.webp',
+            'images/photo19.webp',
+            'images/photo20.webp'
+        ];
+        
+        const statusMessages = [
+            "Extracting and analyzing your photos...",
+            "Reading photo metadata...",
+            "Organizing by date and location...",
+            "Applying GPS information...",
+            "Finalizing your organized collection..."
+        ];
+
+        const phaseMessages = [
+            "Phase 1: Date-based organization",
+            "Phase 2: GPS enrichment", 
+            "Phase 3: Metadata recovery",
+            "Phase 4: Final optimization"
+        ];
+
+        let currentPhase = 0;
+        let processingComplete = false;
+        let activePhotos = [];
+        let loadedImages = []; // Cache for preloaded images
+        
+        // Preload images for smooth performance
+        function preloadImages() {
+            photoUrls.forEach((url, index) => {
+                const img = new Image();
+                img.onload = () => {
+                    loadedImages[index] = img;
+                };
+                img.onerror = () => {
+                    console.warn(`Failed to load image: ${url}`);
+                };
+                img.src = url;
+            });
+        }
+        
+        // Photo management
+        function createFloatingPhoto() {
+            if (processingComplete) return;
+
+            const photo = document.createElement('div');
+            photo.className = 'floating-photo';
+            
+            // Responsive photo sizes
+            const isSmallScreen = window.innerWidth <= 480;
+            const isMediumScreen = window.innerWidth <= 768;
+            
+            let minSize, maxSize;
+            if (isSmallScreen) {
+                minSize = 60;
+                maxSize = 100; // Smaller on mobile
+            } else if (isMediumScreen) {
+                minSize = 70;
+                maxSize = 120; // Medium on tablet
+            } else {
+                minSize = 80;
+                maxSize = 140; // Full size on desktop
+            }
+            
+            const size = minSize + Math.random() * (maxSize - minSize);
+            photo.style.width = size + 'px';
+            photo.style.height = size + 'px';
+            
+            const container = document.getElementById('photoContainer');
+            const containerRect = container.getBoundingClientRect();
+            
+            // Position within the constrained photo container
+            const maxLeft = Math.max(0, containerRect.width - size);
+            const maxTop = Math.max(0, containerRect.height - size);
+            
+            photo.style.left = Math.random() * maxLeft + 'px';
+            photo.style.top = Math.random() * maxTop + 'px';
+            
+            // Create image element with random photo
+            const img = document.createElement('img');
+            const randomIndex = Math.floor(Math.random() * photoUrls.length);
+            img.src = photoUrls[randomIndex];
+            img.alt = `Photo ${randomIndex + 1}`;
+            img.loading = 'lazy';
+            
+            // Handle image load errors gracefully
+            img.onerror = () => {
+                photo.style.background = 'linear-gradient(45deg, #667eea, #764ba2)';
+                photo.innerHTML = '📷';
+                photo.style.color = 'white';
+                photo.style.fontSize = '2rem';
+            };
+            
+            photo.appendChild(img);
+            
+            // Responsive movement ranges
+            let moveXRange, moveYRange;
+            if (isSmallScreen) {
+                moveXRange = 200; // Less movement on small screens
+                moveYRange = 150;
+            } else if (isMediumScreen) {
+                moveXRange = 300;
+                moveYRange = 200;
+            } else {
+                moveXRange = 400; // Full movement on desktop
+                moveYRange = 300;
+            }
+            
+            const duration = 10 + Math.random() * 8; // 10-18 seconds
+            const moveX = (Math.random() - 0.5) * moveXRange;
+            const moveY = (Math.random() - 0.5) * moveYRange;
+            
+            photo.style.animation = `floatAround ${duration}s ease-in-out infinite`;
+            photo.style.setProperty('--moveX', moveX + 'px');
+            photo.style.setProperty('--moveY', moveY + 'px');
+            
+            container.appendChild(photo);
+            
+            // Make visible after a brief delay
+            setTimeout(() => {
+                photo.classList.add('visible');
+            }, 100);
+            
+            activePhotos.push(photo);
+            
+            // Remove photo after some time
+            setTimeout(() => {
+                if (!processingComplete && photo.parentNode) {
+                    photo.classList.add('fadeout');
+                    setTimeout(() => {
+                        if (photo.parentNode) {
+                            photo.parentNode.removeChild(photo);
+                        }
+                        const index = activePhotos.indexOf(photo);
+                        if (index > -1) {
+                            activePhotos.splice(index, 1);
+                        }
+                    }, 500);
+                }
+            }, duration * 1000);
+        }
+
+        // Add CSS animation for floating
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes floatAround {
+                0%, 100% { 
+                    transform: translate(0, 0) rotate(0deg) scale(1);
+                    opacity: 0.8;
+                }
+                25% { 
+                    transform: translate(var(--moveX), calc(var(--moveY) * 0.5)) rotate(5deg) scale(1.05);
+                    opacity: 1;
+                }
+                50% { 
+                    transform: translate(calc(var(--moveX) * 0.5), var(--moveY)) rotate(-3deg) scale(0.95);
+                    opacity: 0.9;
+                }
+                75% { 
+                    transform: translate(calc(var(--moveX) * -0.3), calc(var(--moveY) * 0.8)) rotate(2deg) scale(1.02);
+                    opacity: 1;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Update status messages
+        function updateStatus() {
+            if (processingComplete) return;
+            
+            const statusEl = document.getElementById('statusMessage');
+            const phaseEl = document.getElementById('phaseIndicator');
+            
+            statusEl.style.opacity = '0';
+            phaseEl.style.opacity = '0';
+            
+            setTimeout(() => {
+                statusEl.textContent = statusMessages[currentPhase];
+                phaseEl.textContent = phaseMessages[currentPhase];
+                statusEl.style.opacity = '1';
+                phaseEl.style.opacity = '1';
+                statusEl.style.transition = 'opacity 0.5s ease';
+                phaseEl.style.transition = 'opacity 0.5s ease';
+            }, 250);
+            
+            currentPhase = (currentPhase + 1) % statusMessages.length;
+        }
+
+        // Complete processing
+        function completeProcessing() {
+            processingComplete = true;
+            
+            // Fade out all active photos
+            activePhotos.forEach(photo => {
+                photo.classList.add('fadeout');
+            });
+            
+            // Show completion overlay
+            setTimeout(() => {
+                document.getElementById('completionOverlay').classList.add('show');
+            }, 1000);
+        }
+
+        function viewResults() {
+            alert('In your Flutter app: Navigate to results screen showing organized folder structure');
+        }
+
+        // Start the experience
+        function startProcessing() {
+            // Preload images first for smooth experience
+            preloadImages();
+            
+            // Create responsive initial photo count
+            const initialPhotoCount = getPhotoCount();
+            for (let i = 0; i < initialPhotoCount; i++) {
+                setTimeout(() => createFloatingPhoto(), i * 800);
+            }
+            
+            // Continue adding photos with responsive intervals
+            const photoInterval = setInterval(() => {
+                if (!processingComplete) {
+                    createFloatingPhoto();
+                } else {
+                    clearInterval(photoInterval);
+                }
+            }, getPhotoInterval());
+            
+            // Update status every 8-12 seconds
+            const statusInterval = setInterval(() => {
+                if (!processingComplete) {
+                    updateStatus();
+                } else {
+                    clearInterval(statusInterval);
+                }
+            }, 8000 + Math.random() * 4000);
+            
+            // Complete after random time (15-120 seconds, demo uses 15-30)
+            const completionTime = 15000 + Math.random() * 15000; // 15-30 seconds for demo
+            setTimeout(completeProcessing, completionTime);
+        }
+
+        // Start everything
+        startProcessing();
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            // Reposition photos that might be off-screen after resize
+            activePhotos.forEach(photo => {
+                const container = document.getElementById('photoContainer');
+                const containerRect = container.getBoundingClientRect();
+                const photoRect = photo.getBoundingClientRect();
+                
+                // If photo is outside container bounds, reposition it
+                if (photoRect.left > containerRect.width || 
+                    photoRect.top > containerRect.height ||
+                    photoRect.left < 0 || photoRect.top < 0) {
+                    
+                    const size = parseInt(photo.style.width);
+                    const maxLeft = Math.max(0, containerRect.width - size);
+                    const maxTop = Math.max(0, containerRect.height - size);
+                    
+                    photo.style.left = Math.random() * maxLeft + 'px';
+                    photo.style.top = Math.random() * maxTop + 'px';
+                }
+            });
+        });
+
+        // Responsive photo generation based on screen size
+        function getPhotoCount() {
+            if (window.innerWidth <= 480) return 3; // Mobile: fewer photos
+            if (window.innerWidth <= 768) return 4; // Tablet: medium count
+            return 5; // Desktop: full count
+        }
+
+        function getPhotoInterval() {
+            if (window.innerWidth <= 480) return 2000 + Math.random() * 2000; // Mobile: slower
+            return 1500 + Math.random() * 1500; // Desktop/tablet: normal speed
+        }
+    </script>
+</body>
+</html>
