@@ -588,6 +588,51 @@
             transform: translate(-50%, -50%) scale(1);
         }
 
+        .explorer-container.demo-highlight {
+            border: 4px solid #ffd700 !important;
+            box-shadow: 0 0 40px rgba(255, 215, 0, 0.6), inset 0 0 20px rgba(255, 215, 0, 0.1) !important;
+            animation: explorerGlow 2s ease-in-out;
+        }
+
+        @keyframes explorerGlow {
+            0%, 100% {
+                box-shadow: 0 0 40px rgba(255, 215, 0, 0.6), inset 0 0 20px rgba(255, 215, 0, 0.1);
+            }
+            50% {
+                box-shadow: 0 0 60px rgba(255, 215, 0, 0.8), inset 0 0 30px rgba(255, 215, 0, 0.2);
+                transform: translate(-50%, -50%) scale(1.01);
+            }
+        }
+
+        .explorer-container.demo-highlight::before {
+            content: '✨ DEMO PREVIEW ✨';
+            position: absolute;
+            top: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(45deg, #ffd700, #ffed4e);
+            color: #333;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            z-index: 200;
+            box-shadow: 0 4px 15px rgba(255, 215, 0, 0.4);
+            border: 2px solid #ffed4e;
+            animation: demoBadgePulse 2s ease-in-out;
+        }
+
+        @keyframes demoBadgePulse {
+            0%, 100% {
+                opacity: 1;
+                transform: translateX(-50%) scale(1);
+            }
+            50% {
+                opacity: 0.8;
+                transform: translateX(-50%) scale(1.05);
+            }
+        }
+
         .explorer-header {
             background: #f8f9fa;
             border-bottom: 1px solid #dee2e6;
@@ -1634,13 +1679,20 @@
                 
                 // Show file explorer
                 setTimeout(() => {
-                    document.getElementById('explorerContainer').classList.add('visible');
+                    const explorerContainer = document.getElementById('explorerContainer');
+                    explorerContainer.classList.add('visible');
+                    
+                    // Add demo highlight after it appears
+                    setTimeout(() => {
+                        explorerContainer.classList.add('demo-highlight');
+                    }, 300);
+                    
                 }, 500);
                 
-                // Then show completion overlay after viewing explorer
+                // Show completion overlay sooner - don't let people think it's real
                 setTimeout(() => {
                     document.getElementById('completionOverlay').classList.add('show');
-                }, 4000); // Give time to see the file explorer
+                }, 2500); // Reduced from 4000ms - shorter time in view
                 
             }, 1000);
         }
