@@ -1689,10 +1689,10 @@
                     
                 }, 500);
                 
-                // Show completion overlay sooner - don't let people think it's real
+                // Show completion overlay with original timing - golden border prevents confusion
                 setTimeout(() => {
                     document.getElementById('completionOverlay').classList.add('show');
-                }, 2500); // Reduced from 4000ms - shorter time in view
+                }, 4000); // Back to original 4 seconds
                 
             }, 1000);
         }
