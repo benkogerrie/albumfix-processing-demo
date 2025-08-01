@@ -1451,116 +1451,124 @@
                 !photo.classList.contains('merging')
             );
             
+            // Create additional photos if we don't have enough unique ones
+            const allPhotos = [...remainingPhotos];
+            while (allPhotos.length < 20) {
+                const newPhoto = createFloatingPhoto(allPhotos.length % photoUrls.length);
+                if (newPhoto) {
+                    newPhoto.style.opacity = '0'; // Hide immediately, will fly to album
+                    allPhotos.push(newPhoto);
+                }
+            }
+            
             const monthFolders = document.querySelectorAll('.month-folder');
             const albumAssignments = [
-                { folder: 0, maxPhotos: 3 }, // 2023 - Summer Vacation
-                { folder: 1, maxPhotos: 2 }, // 2023 - Christmas  
-                { folder: 2, maxPhotos: 2 }, // 2024 - New Year
-                { folder: 3, maxPhotos: 3 }  // 2024 - Family Time
+                { folder: 0, maxPhotos: 5, name: 'Summer Vacation' }, // 2023 - photos 0-4
+                { folder: 1, maxPhotos: 5, name: 'Christmas' },       // 2023 - photos 5-9  
+                { folder: 2, maxPhotos: 5, name: 'New Year' },        // 2024 - photos 10-14
+                { folder: 3, maxPhotos: 5, name: 'Family Time' }      // 2024 - photos 15-19
             ];
             
             let photoIndex = 0;
             
-            albumAssignments.forEach(({ folder, maxPhotos }, albumIndex) => {
+            albumAssignments.forEach(({ folder, maxPhotos, name }, albumIndex) => {
                 const targetFolder = monthFolders[folder];
                 const albumPreview = targetFolder?.querySelector('.album-preview');
                 
                 if (albumPreview) {
-                    for (let i = 0; i < maxPhotos && photoIndex < remainingPhotos.length; i++) {
-                        const photo = remainingPhotos[photoIndex];
-                        const previewSlot = albumPreview.children[i];
+                    // Fill all 4 preview slots + 1 extra (that goes into the album but not shown)
+                    for (let i = 0; i < maxPhotos && photoIndex < allPhotos.length; i++) {
+                        const photo = allPhotos[photoIndex];
                         
-                        if (photo && previewSlot) {
-                            setTimeout(() => {
-                                flyPhotoToAlbum(photo, previewSlot, targetFolder);
-                            }, (albumIndex * 800) + (i * 200));
+                        if (photo) {
+                            if (i < 4) {
+                                // First 4 photos go to preview slots
+                                const previewSlot = albumPreview.children[i];
+                                if (previewSlot) {
+                                    setTimeout(() => {
+                                        flyPhotoToAlbum(photo, previewSlot, targetFolder, true);
+                                    }, (albumIndex * 1000) + (i * 250));
+                                }
+                            } else {
+                                // 5th photo goes into album but not shown in preview
+                                setTimeout(() => {
+                                    flyPhotoToAlbum(photo, null, targetFolder, false);
+                                }, (albumIndex * 1000) + (i * 250));
+                            }
                         }
                         photoIndex++;
                     }
                 }
             });
-            
-            // Handle ALL remaining photos - make them disappear into albums even if not shown in preview
-            for (let i = photoIndex; i < remainingPhotos.length; i++) {
-                const photo = remainingPhotos[i];
-                const targetFolder = monthFolders[i % monthFolders.length]; // Distribute to any folder
-                
-                setTimeout(() => {
-                    // Fly to a random album center even if no preview slot
-                    const folderRect = targetFolder.getBoundingClientRect();
-                    const container = document.getElementById('photoContainer');
-                    const containerRect = container.getBoundingClientRect();
-                    
-                    const targetX = folderRect.left - containerRect.left + (folderRect.width / 2);
-                    const targetY = folderRect.top - containerRect.top + (folderRect.height / 2);
-                    
-                    photo.style.transition = 'all 2s cubic-bezier(0.4, 0, 0.2, 1)';
-                    photo.style.left = targetX + 'px';
-                    photo.style.top = targetY + 'px';
-                    photo.style.transform = 'scale(0.1)';
-                    photo.style.opacity = '0';
-                    
-                    // Remove after animation
-                    setTimeout(() => {
-                        if (photo.parentNode) {
-                            photo.parentNode.removeChild(photo);
-                            const index = activePhotos.indexOf(photo);
-                            if (index > -1) activePhotos.splice(index, 1);
-                        }
-                    }, 2000);
-                    
-                }, 3000 + (i * 100)); // After all main albums are filled
-            }
         }
 
-        function flyPhotoToAlbum(photo, targetPreview, parentFolder) {
+        function flyPhotoToAlbum(photo, targetPreview, parentFolder, showInPreview = true) {
             photo.classList.add('flying-to-album');
             
-            // Get target position
-            const targetRect = targetPreview.getBoundingClientRect();
-            const container = document.getElementById('photoContainer');
-            const containerRect = container.getBoundingClientRect();
+            let targetX, targetY;
             
-            // Calculate relative position
-            const targetX = targetRect.left - containerRect.left;
-            const targetY = targetRect.top - containerRect.top;
+            if (showInPreview && targetPreview) {
+                // Fly to preview slot
+                const targetRect = targetPreview.getBoundingClientRect();
+                const container = document.getElementById('photoContainer');
+                const containerRect = container.getBoundingClientRect();
+                
+                targetX = targetRect.left - containerRect.left;
+                targetY = targetRect.top - containerRect.top;
+                
+                photo.style.left = targetX + 'px';
+                photo.style.top = targetY + 'px';
+                photo.style.transform = 'scale(0.35)';
+            } else {
+                // Fly to album center and disappear
+                const folderRect = parentFolder.getBoundingClientRect();
+                const container = document.getElementById('photoContainer');
+                const containerRect = container.getBoundingClientRect();
+                
+                targetX = folderRect.left - containerRect.left + (folderRect.width / 2);
+                targetY = folderRect.top - containerRect.top + (folderRect.height / 2);
+                
+                photo.style.left = targetX + 'px';
+                photo.style.top = targetY + 'px';
+                photo.style.transform = 'scale(0.1)';
+                photo.style.opacity = '0';
+            }
             
-            // Fly to target
-            photo.style.left = targetX + 'px';
-            photo.style.top = targetY + 'px';
-            photo.style.transform = 'scale(0.35)'; // Smaller to fit preview
-            
-            // After arrival, populate the preview and mark folder as complete
+            // After arrival
             setTimeout(() => {
-                // Clone the image to the preview
-                const img = photo.querySelector('img');
-                if (img && img.src) {
-                    const previewImg = document.createElement('img');
-                    previewImg.src = img.src;
-                    previewImg.alt = img.alt;
-                    targetPreview.appendChild(previewImg);
-                    targetPreview.classList.add('filled');
+                if (showInPreview && targetPreview) {
+                    // Replace preview icon with real photo
+                    const img = photo.querySelector('img');
+                    if (img && img.src) {
+                        const previewImg = document.createElement('img');
+                        previewImg.src = img.src;
+                        previewImg.alt = img.alt;
+                        
+                        // Clear the preview slot and add real photo
+                        targetPreview.innerHTML = '';
+                        targetPreview.appendChild(previewImg);
+                        targetPreview.classList.add('filled');
+                    }
                 }
                 
                 // Hide the flying photo
                 photo.classList.add('landed-in-album');
                 
-                // Mark month folder as completed when it gets photos
+                // Mark month folder as completed
                 setTimeout(() => {
                     parentFolder.classList.add('completed');
                     
-                    // Remove month completed status after showing the effect
                     setTimeout(() => {
                         parentFolder.classList.remove('completed');
                     }, 2500);
                 }, 300);
                 
-                // Check if entire year is complete and add magic effect
+                // Check year completion
                 setTimeout(() => {
                     checkAndHighlightCompleteYear(parentFolder);
-                }, 300); // Even faster trigger
+                }, 500);
                 
-                // Remove from DOM after transition
+                // Remove from DOM
                 setTimeout(() => {
                     if (photo.parentNode) {
                         photo.parentNode.removeChild(photo);
@@ -1569,7 +1577,7 @@
                     }
                 }, 500);
                 
-            }, 2000); // Faster arrival
+            }, 2000);
         }
 
         function checkAndHighlightCompleteYear(monthFolder) {
@@ -1643,19 +1651,19 @@
 
         // Start the transformation
         function startDemo() {
-            // Create more initial chaos photos to ensure enough for all albums
-            for (let i = 0; i < 8; i++) {
+            // Start with fewer floating photos since we'll create 20 total for albums
+            for (let i = 0; i < 6; i++) {
                 setTimeout(() => createFloatingPhoto(), i * 300);
             }
             
-            // Continue adding photos during chaos phase
+            // Continue adding photos during chaos phase to reach 20 total
             const photoInterval = setInterval(() => {
-                if (currentPhase < 2 && !processingComplete && activePhotos.length < 12) {
+                if (currentPhase < 2 && !processingComplete && activePhotos.length < 15) {
                     createFloatingPhoto();
                 } else {
                     clearInterval(photoInterval);
                 }
-            }, 1800);
+            }, 1500);
             
             // Start phase progression
             setTimeout(updatePhase, 1500);
