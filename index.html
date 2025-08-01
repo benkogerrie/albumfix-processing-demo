@@ -391,7 +391,72 @@
             transform: translateY(-2px);
         }
 
-        /* File Explorer View */
+        /* Merge Animation for Floating Photos */
+        .floating-photo.merge-target {
+            transition: all 2s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 80;
+        }
+
+        .floating-photo.merge-duplicate {
+            transition: all 2s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 79;
+        }
+
+        .floating-photo.merging {
+            opacity: 0.3;
+            transform: scale(0.8);
+        }
+
+        .floating-photo.merged-away {
+            opacity: 0;
+            transform: scale(0.2);
+            pointer-events: none;
+        }
+
+        .floating-photo.best-selected {
+            border-color: #ffd700 !important;
+            box-shadow: 0 8px 32px rgba(255, 215, 0, 0.6) !important;
+            transform: scale(1.1);
+            z-index: 85;
+        }
+
+        .floating-photo.best-selected::after {
+            content: '★';
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: #ffd700;
+            color: #333;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: bold;
+            opacity: 0;
+            animation: starAppear 0.5s ease 0.5s forwards;
+        }
+
+        @keyframes starAppear {
+            0% {
+                opacity: 0;
+                transform: scale(0) rotate(0deg);
+            }
+            50% {
+                transform: scale(1.3) rotate(180deg);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1) rotate(360deg);
+            }
+        }
+
+        /* Remove the separate duplicate demo */
+        .duplicate-demo {
+            display: none;
+        }
         .explorer-container {
             position: absolute;
             top: 50%;
@@ -689,7 +754,16 @@
             <div class="subtitle">Transforming chaos into organized memories</div>
         </div>
 
-        <!-- Floating Photos Container -->
+        <!-- Duplicate Demo Animation -->
+        <div class="duplicate-demo" id="duplicateDemo">
+            <div class="duplicate-photo-left">
+                <img src="images/photo1.webp" alt="Duplicate Photo" onerror="this.parentNode.innerHTML='📷'; this.parentNode.style.display='flex'; this.parentNode.style.alignItems='center'; this.parentNode.style.justifyContent='center'; this.parentNode.style.fontSize='3rem'; this.parentNode.style.color='white'; this.parentNode.style.background='linear-gradient(45deg, #667eea, #764ba2)';"/>
+            </div>
+            <div class="duplicate-photo-right">
+                <img src="images/photo1.webp" alt="Same Photo" onerror="this.parentNode.innerHTML='📷'; this.parentNode.style.display='flex'; this.parentNode.style.alignItems='center'; this.parentNode.style.justifyContent='center'; this.parentNode.style.fontSize='3rem'; this.parentNode.style.color='white'; this.parentNode.style.background='linear-gradient(45deg, #667eea, #764ba2)';"/>
+                <div class="quality-badge">★</div>
+            </div>
+        </div>
         <div class="photo-container" id="photoContainer">
             <!-- Photos will be dynamically added here -->
         </div>
@@ -965,10 +1039,10 @@
 
         const phases = [
             {
-                progress: 0,
+                progress: 15,
                 message: "Analyzing your photo collection...",
                 phase: "Phase 1: Chaos Detection",
-                duration: 3000
+                duration: 2000
             },
             {
                 progress: 30,
@@ -1006,7 +1080,7 @@
         let activePhotos = [];
         let processingComplete = false;
 
-        function createFloatingPhoto() {
+        function createFloatingPhoto(forcePhotoIndex = null) {
             if (processingComplete) return;
 
             const photo = document.createElement('div');
@@ -1024,11 +1098,14 @@
             photo.style.left = Math.random() * (containerRect.width - size) + 'px';
             photo.style.top = Math.random() * (containerRect.height - size) + 'px';
             
-            // Create image
+            // Create image - use forced index or random
             const img = document.createElement('img');
-            const randomIndex = Math.floor(Math.random() * photoUrls.length);
-            img.src = photoUrls[randomIndex];
-            img.alt = `Photo ${randomIndex + 1}`;
+            const photoIndex = forcePhotoIndex !== null ? forcePhotoIndex : Math.floor(Math.random() * photoUrls.length);
+            img.src = photoUrls[photoIndex];
+            img.alt = `Photo ${photoIndex + 1}`;
+            
+            // Store photo index for duplicate detection
+            photo.dataset.photoIndex = photoIndex;
             
             img.onerror = () => {
                 photo.style.background = 'linear-gradient(45deg, #667eea, #764ba2)';
@@ -1091,8 +1168,11 @@
             document.getElementById('statusMessage').textContent = phase.message;
             document.getElementById('phaseIndicator').textContent = phase.phase;
             
-            // Phase-specific behaviors
-            if (phase.progress === 30) {
+            // Phase-specific behaviors  
+            if (phase.progress === 15) {
+                showDuplicateDemo();
+            } else if (phase.progress === 30) {
+                hideDuplicateDemo();
                 startGroupingPhase();
             } else if (phase.progress === 60) {
                 startOrganizationPhase();
@@ -1115,6 +1195,80 @@
             
             currentPhase++;
             setTimeout(updatePhase, phase.duration);
+        }
+
+        function showDuplicateDemo() {
+            // Create two identical photos that will merge
+            setTimeout(() => {
+                const photo1 = createFloatingPhoto(0); // Force same photo index
+                const photo2 = createFloatingPhoto(0); // Force same photo index
+                
+                if (photo1 && photo2) {
+                    // Position them apart but visible
+                    photo1.style.left = '30%';
+                    photo1.style.top = '45%';
+                    photo2.style.left = '60%';
+                    photo2.style.top = '55%';
+                    
+                    // Start merge animation after they're visible
+                    setTimeout(() => {
+                        startMergeAnimation(photo1, photo2);
+                    }, 1500);
+                }
+            }, 1000);
+        }
+
+        function startMergeAnimation(photo1, photo2) {
+            // Mark photos for merge
+            photo1.classList.add('merge-duplicate');
+            photo2.classList.add('merge-target');
+            
+            // Calculate center point between photos
+            const rect1 = photo1.getBoundingClientRect();
+            const rect2 = photo2.getBoundingClientRect();
+            const centerX = (rect1.left + rect2.left) / 2;
+            const centerY = (rect1.top + rect2.top) / 2;
+            
+            // Move both photos toward center
+            setTimeout(() => {
+                photo1.classList.add('merging');
+                
+                // Move photo1 (duplicate) toward photo2
+                const container = document.getElementById('photoContainer');
+                const containerRect = container.getBoundingClientRect();
+                const targetX = rect2.left - containerRect.left;
+                const targetY = rect2.top - containerRect.top;
+                
+                photo1.style.left = targetX + 'px';
+                photo1.style.top = targetY + 'px';
+                
+                // Photo2 becomes the "best" version
+                setTimeout(() => {
+                    photo2.classList.add('best-selected');
+                }, 1000);
+                
+                // Remove photo1 after merge
+                setTimeout(() => {
+                    photo1.classList.add('merged-away');
+                    setTimeout(() => {
+                        if (photo1.parentNode) {
+                            photo1.parentNode.removeChild(photo1);
+                            const index = activePhotos.indexOf(photo1);
+                            if (index > -1) activePhotos.splice(index, 1);
+                        }
+                    }, 500);
+                }, 1500);
+                
+                // Remove gold border after a moment
+                setTimeout(() => {
+                    photo2.classList.remove('best-selected');
+                }, 3000);
+                
+            }, 800);
+        }
+
+        function hideDuplicateDemo() {
+            // Demo is now integrated, no need to hide separately
         }
 
         function startGroupingPhase() {
@@ -1217,9 +1371,9 @@
 
         // Start the transformation
         function startDemo() {
-            // Create initial chaos
-            for (let i = 0; i < 12; i++) {
-                setTimeout(() => createFloatingPhoto(), i * 300);
+            // Create initial chaos - regular photos
+            for (let i = 0; i < 6; i++) {
+                setTimeout(() => createFloatingPhoto(), i * 400);
             }
             
             // Continue adding photos during chaos phase
@@ -1229,10 +1383,10 @@
                 } else {
                     clearInterval(photoInterval);
                 }
-            }, 1500);
+            }, 2000);
             
             // Start phase progression
-            setTimeout(updatePhase, 1000);
+            setTimeout(updatePhase, 1500);
         }
 
         // Initialize
