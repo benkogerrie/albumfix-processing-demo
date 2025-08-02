@@ -384,11 +384,85 @@
             cursor: pointer;
             backdrop-filter: blur(10px);
             transition: all 0.3s ease;
+            margin: 0 10px;
         }
 
         .continue-button:hover {
             background: rgba(255, 255, 255, 0.3);
             transform: translateY(-2px);
+        }
+
+        .download-button {
+            background: linear-gradient(45deg, #ffd700, #ffed4e);
+            color: #333;
+            border: 2px solid #ffed4e;
+            padding: 18px 40px;
+            border-radius: 12px;
+            font-size: 1.2rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 0 10px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .download-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 30px rgba(255, 215, 0, 0.4);
+        }
+
+        .download-button.glow-pulse {
+            animation: downloadGlow 2s ease-in-out;
+        }
+
+        @keyframes downloadGlow {
+            0%, 100% {
+                box-shadow: 0 8px 25px rgba(255, 215, 0, 0.3);
+            }
+            50% {
+                box-shadow: 0 8px 40px rgba(255, 215, 0, 0.8), 0 0 20px rgba(255, 215, 0, 0.6);
+                transform: translateY(-3px) scale(1.05);
+            }
+        }
+
+        .download-button::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transform: rotate(45deg);
+            transition: all 0.6s ease;
+            opacity: 0;
+        }
+
+        .download-button.glow-pulse::before {
+            animation: shimmer 2s ease-in-out;
+        }
+
+        @keyframes shimmer {
+            0% {
+                transform: translateX(-100%) translateY(-100%) rotate(45deg);
+                opacity: 0;
+            }
+            50% {
+                opacity: 1;
+            }
+            100% {
+                transform: translateX(100%) translateY(100%) rotate(45deg);
+                opacity: 0;
+            }
+        }
+
+        .button-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
         }
 
         .floating-photo.flying-to-album {
@@ -1173,7 +1247,14 @@
                     <div class="stat-label">Photos Organized</div>
                 </div>
             </div>
-            <button class="continue-button" onclick="viewResults()">View Your Organized Photos</button>
+            <div class="button-container">
+                <button class="download-button" id="downloadButton" onclick="downloadAlbumFix()">
+                    📥 Download AlbumFix
+                </button>
+                <button class="continue-button" onclick="viewResults()">
+                    👁️ View Demo Again
+                </button>
+            </div>
         </div>
     </div>
 
@@ -1692,13 +1773,40 @@
                 // Show completion overlay with original timing - golden border prevents confusion
                 setTimeout(() => {
                     document.getElementById('completionOverlay').classList.add('show');
+                    
+                    // Add glow pulse to download button after overlay appears
+                    setTimeout(() => {
+                        const downloadBtn = document.getElementById('downloadButton');
+                        if (downloadBtn) {
+                            downloadBtn.classList.add('glow-pulse');
+                            
+                            // Remove glow after animation completes, but can be triggered again on hover
+                            setTimeout(() => {
+                                downloadBtn.classList.remove('glow-pulse');
+                            }, 2000);
+                        }
+                    }, 1000); // 1 second after overlay appears
+                    
                 }, 4000); // Back to original 4 seconds
                 
             }, 1000);
         }
 
+        function downloadAlbumFix() {
+            // Add glow effect when clicked
+            const downloadBtn = document.getElementById('downloadButton');
+            downloadBtn.classList.add('glow-pulse');
+            
+            // Open the actual download link in a new tab
+            setTimeout(() => {
+                window.open('https://drive.google.com/file/d/1-gu1s2Ycm-DnakLnHjWAnvjdsnmzt5xj/view?usp=drive_link', '_blank');
+                downloadBtn.classList.remove('glow-pulse');
+            }, 300); // Small delay to show the glow effect
+        }
+
         function viewResults() {
-            alert('In your Flutter app: Navigate to organized photo library view');
+            // Restart the demo
+            location.reload();
         }
 
         // Start the transformation
